@@ -1,0 +1,23 @@
+{
+    "Dependencies": [
+        "GlobalObjectId_V1-1-0dd0db578a111476e84465383e758e5e-93214019566545601-0"
+    ],
+    "Components": [
+        {
+            "$type": "Unity.Build.Classic.ClassicBuildProfile, Unity.Build.Classic",
+            "$version": 1,
+            "Platform": "Android",
+            "Configuration": 2,
+            "Incremental": false
+        },
+        {
+            "$type": "Unity.Build.Android.AndroidArchitectures, Unity.Build.Android",
+            "Architectures": 2
+        },
+        {
+            "$type": "Unity.Build.Android.AndroidAPILevels, Unity.Build.Android",
+            "MinAPILevel": 19,
+            "TargetAPILevel": 0
+        }
+    ]
+}
