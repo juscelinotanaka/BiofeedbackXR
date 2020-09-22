@@ -138,7 +138,6 @@ namespace BLEServices
                         (__, ___) => SetState(State.Communicating),
                         (address, characteristicUuid, bytes) =>
                         {
-                            Debug.Log(bytes.Length);
                             onDataReceived?.Invoke(new Data
                             {
                                 Characteristic = characteristic,
