@@ -12,6 +12,7 @@ namespace BLEServices
             Connected,
             Subscribing,
             Communicating,
+            Unknown
         }
     }
 }
