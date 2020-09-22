@@ -2,18 +2,21 @@
 using System.Collections;
 using System.Collections.Generic;
 using BLEServices;
+using TMPro;
 using UnityEngine;
 using VisualGraphs;
 using Random = UnityEngine.Random;
 
 public class BLEToGraph : MonoBehaviour
 {
+    [SerializeField] private TextMeshPro statusText = null;
     private List<BLEService.Characteristic> characteristics = new List<BLEService.Characteristic>();
     private List<BLEService.Device> devices = new List<BLEService.Device>();
     private string s = "-";
 
     [SerializeField] private LineChart _chart;
     private string CharacteristicUuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
+    private BLEService.State _previousState = BLEService.State.Unknown;
 
     private IEnumerator Start()
     {
@@ -44,6 +47,15 @@ public class BLEToGraph : MonoBehaviour
                 Debug.Log("### Intialization error");
             });
         // UARTService
+    }
+
+    private void Update()
+    {
+        if (BLEService.CurrentState != _previousState)
+        {
+            _previousState = BLEService.CurrentState;
+            statusText.text = BLEService.CurrentState.ToString();
+        }
     }
 
     private void OnGUI()
