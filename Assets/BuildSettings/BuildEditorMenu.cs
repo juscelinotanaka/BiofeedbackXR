@@ -96,6 +96,7 @@ namespace BuildSettings
             return CurrentConfiguration != null;
         }
 
+#if UNITY_ANDROID
         [MenuItem(BuilderLaunchOnAndroidPath, false, 102)]
         public static void LaunchOnAndroid()
         {
@@ -141,5 +142,6 @@ namespace BuildSettings
                    CurrentConfiguration.GetBuildPipeline().UsedComponents
                        .Any(type => type.Name.Contains("ApplicationIdentifier"));
         }
+#endif
     }
 }
