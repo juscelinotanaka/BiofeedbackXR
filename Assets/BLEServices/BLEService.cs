@@ -206,5 +206,14 @@ namespace BLEServices
         {
             CurrentState = newState;
         }
+
+        public static void WriteToCharacteristic(Characteristic characteristic, byte[] data,
+            bool withResponse, Action<string> action)
+        {
+            CheckIfInitialized();
+
+            BluetoothLEHardwareInterface.WriteCharacteristic(characteristic.Device.Address, characteristic.ServiceUuid,
+                characteristic.CharacteristicUuid, data, data.Length, withResponse, action);
+        }
     }
 }
