@@ -16,7 +16,7 @@
         },
         {
             "$type": "Unity.Build.Android.AndroidAPILevels, Unity.Build.Android",
-            "MinAPILevel": 19,
+            "MinAPILevel": 23,
             "TargetAPILevel": 0
         }
     ]
