@@ -215,5 +215,13 @@ namespace BLEServices
             BluetoothLEHardwareInterface.WriteCharacteristic(characteristic.Device.Address, characteristic.ServiceUuid,
                 characteristic.CharacteristicUuid, data, data.Length, withResponse, action);
         }
+
+        public static void ReadCharacteristic(Characteristic characteristic, Action<string, byte[]> result)
+        {
+            CheckIfInitialized();
+
+            BluetoothLEHardwareInterface.ReadCharacteristic(characteristic.Device.Address, characteristic.ServiceUuid,
+                characteristic.CharacteristicUuid, result);
+        }
     }
 }

@@ -8,15 +8,103 @@ public class MyoBLE : MonoBehaviour
 {
     private List<BLEService.Characteristic> characteristics = new List<BLEService.Characteristic>();
     private List<BLEService.Device> devices = new List<BLEService.Device>();
-    private string s = "-";
+
+    private string _debugText = "-";
 
     public Transform controller;
 
-    public LineChart xChart;
-    public LineChart yChart;
-    public LineChart zChart;
+    [SerializeField] private Quaternion quaternionMultiplier = new Quaternion(1, 1, 1, 1);
+    [SerializeField] private Vector3 correctionEuler;
+
+
+    public LineChart[] charts;
 
     public SphereMover SphereMover;
+    private bool _hasSphereMover;
+
+    private BLEService.Device _connectedDevice;
+
+    private void Awake()
+    {
+        _hasSphereMover = SphereMover != null;
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            AddNumbers();
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            SubNumbers();
+        }
+    }
+
+    private void SubNumbers()
+    {
+        a--;
+        if (a == -1)
+        {
+            a = 3;
+            b--;
+            if (b == -1)
+            {
+                b = 3;
+                c--;
+                if (c == -1)
+                {
+                    c = 3;
+                }
+            }
+        }
+
+        UpdateEuler();
+    }
+
+    private int a, b, c;
+
+    private void AddNumbers()
+    {
+        a++;
+        if (a == 4)
+        {
+            a = 0;
+            b++;
+            if (b == 4)
+            {
+                b = 0;
+                c++;
+                if (c == 4)
+                    c = 0;
+            }
+        }
+
+        UpdateEuler();
+    }
+
+    private void UpdateEuler()
+    {
+        correctionEuler.x = IntToAngle(a);
+        correctionEuler.y = IntToAngle(b);
+        correctionEuler.z = IntToAngle(c);
+    }
+
+    private float IntToAngle(int i)
+    {
+        switch (i)
+        {
+            case 1:
+                return 90;
+            case 2:
+                return 180;
+            case 3:
+                return 270;
+            default:
+                return i;
+        }
+    }
 
     private void OnGUI()
     {
@@ -49,52 +137,114 @@ public class MyoBLE : MonoBehaviour
                     }
 
                     break;
-                case BLEService.State.Disconnecting:
-                    break;
+
                 case BLEService.State.Scanning:
                     PrintAvailableDevicesList();
                     break;
-                case BLEService.State.Connecting:
-                    break;
+
                 case BLEService.State.Connected:
                     PrintCommands();
 
-                    ReadData();
+                    ReadMyoInfoButton();
+
+                    ReadImuDataButton();
+                    ReadEmgDataButton();
                     break;
-                case BLEService.State.Subscribing:
-                    break;
+
                 case BLEService.State.Communicating:
                     PrintCommands();
-                    GUILayout.Label($"Data: {s}");
+                    GUILayout.Label($"Data: {_debugText}");
                     break;
+
                 case BLEService.State.Disconnected:
                     if (characteristics.Count > 0)
                         characteristics.Clear();
                     PrintAvailableDevicesList();
                     break;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
         }
     }
 
-    private const string CommandService = "D5060001-A904-DEB9-4748-2C7F4A124842";
+    private const string MyoInfoCharacteristic = "D5060101-A904-DEB9-4748-2C7F4A124842";
+
+    private void ReadMyoInfoButton()
+    {
+        if (GUILayout.Button("Read Myo Info"))
+        {
+            var characteristic = new BLEService.Characteristic()
+            {
+                Device = _connectedDevice,
+                ServiceUuid = ControlService,
+                CharacteristicUuid = MyoInfoCharacteristic
+            };
+            Debug.Log("requesting..");
+
+            // BLEService.ReadCharacteristic(characteristic,
+            //     (s, bytes) =>
+            //     {
+            //         Debug.Log("Something received");
+            //         _debugText = $"{Time.realtimeSinceStartup}: {s} - {bytes.Length}";
+            //     });
+        }
+    }
+
+    private void PrintCommands()
+    {
+        Command("Vibrate", new byte[] {0x0b});
+        GUILayout.BeginHorizontal();
+        Command("Lock", new byte[] {0x0a, 0x00});
+        Command("Unlock Timed", new byte[] {0x0a, 0x01});
+        Command("Unlock Always", new byte[] {0x0a, 0x02});
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Sleep Mode: ");
+        Command("Normal", new byte[] {0x09, 0x00});
+        Command("Never Sleep", new byte[] {0x09, 0x01});
+        GUILayout.EndHorizontal();
+        GUILayout.Label("Modes");
+        GUILayout.BeginHorizontal();
+        Command("EMG + IMU + Classif.", new byte[] {0x01, 0x02, 0x01, 0x01});
+        Command("EMG + IMU", new byte[] {0x01, 0x03, 0x02, 0x01, 0x00});
+        Command("EMG", new byte[] {0x01, 0x03, 0x02, 0x00, 0x00});
+        Command("IMU", new byte[] {0x01, 0x03, 0x00, 0x01, 0x00});
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(20);
+    }
+
+    private void Command(string action, byte[] data)
+    {
+        if (GUILayout.Button(action))
+        {
+            SendCommand(data);
+        }
+    }
+
+    private const string ControlService = "D5060001-A904-DEB9-4748-2C7F4A124842";
     private const string CommandCharacteristic = "D5060401-A904-DEB9-4748-2C7F4A124842";
+
+    private void SendCommand(byte[] data)
+    {
+        var characteristic = new BLEService.Characteristic()
+        {
+            CharacteristicUuid = CommandCharacteristic,
+            Device = _connectedDevice,
+            ServiceUuid = ControlService
+        };
+
+        BLEService.WriteToCharacteristic(characteristic,
+            data, false, s1 => { Debug.Log($"Reply: {s1}"); });
+    }
+
 
     private const string ImuService = "D5060002-A904-DEB9-4748-2C7F4A124842";
     private const string ImuDataCharacteristic = "D5060402-A904-DEB9-4748-2C7F4A124842";
 
-    // private string _emgService = "D5060005-A904-DEB9-4748-2C7F4A124842";
-    // private string _emgDataCharacteristic1 = "D5060105-A904-DEB9-4748-2C7F4A124842";
-    // private string _emgDataCharacteristic2 = "D5060205-A904-DEB9-4748-2C7F4A124842";
-    // private string _emgDataCharacteristic3 = "D5060305-A904-DEB9-4748-2C7F4A124842";
-    // private string _emgDataCharacteristic4 = "D5060405-A904-DEB9-4748-2C7F4A124842";
-
-    private void ReadData()
+    private void ReadImuDataButton()
     {
-        if (GUILayout.Button("Read Data"))
+        if (GUILayout.Button("Read IMU Data"))
         {
-            BLEService.Characteristic characteristic = new BLEService.Characteristic
+            var characteristic = new BLEService.Characteristic
             {
                 Device = _connectedDevice,
                 ServiceUuid = ImuService,
@@ -105,74 +255,94 @@ public class MyoBLE : MonoBehaviour
         }
     }
 
-    private void PrintCommands()
-    {
-        Command("Vibrate", new byte[] {0x0b});
-        GUILayout.BeginHorizontal();
-        Command("Lock", new byte[] {0x0a, 0x00});
-        Command("Unlock Timed", new byte[] {0x0a, 0x01});
-        Command("Unlock 4ever", new byte[] {0x0a, 0x02});
-        GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();
-        Command("Sleep Mode Normal", new byte[] {0x09, 0x00});
-        Command("Sleep Mode Never Sleep", new byte[] {0x09, 0x01});
-        GUILayout.EndHorizontal();
-        GUILayout.Label("Modes");
-        GUILayout.BeginHorizontal();
-        Command("EMG + IMU + Classif.", new byte[] {0x01, 0x02, 0x01, 0x01});
-        Command("EMG + IMU", new byte[] {0x01, 0x02, 0x01, 0x00});
-        Command("EMG", new byte[] {0x01, 0x02, 0x00, 0x00});
-        Command("IMU", new byte[] {0x01, 0x00, 0x00, 0x01});
-        GUILayout.EndHorizontal();
+    private string _emgService = "D5060005-A904-DEB9-4748-2C7F4A124842";
+    private string _emgDataCharacteristic1 = "D5060105-A904-DEB9-4748-2C7F4A124842";
+    private string _emgDataCharacteristic2 = "D5060205-A904-DEB9-4748-2C7F4A124842";
+    private string _emgDataCharacteristic3 = "D5060305-A904-DEB9-4748-2C7F4A124842";
+    private string _emgDataCharacteristic4 = "D5060405-A904-DEB9-4748-2C7F4A124842";
 
-        GUILayout.Space(20);
-    }
-
-    public void Command(string action, byte[] data)
+    private void ReadEmgDataButton()
     {
-        if (GUILayout.Button(action))
+        if (GUILayout.Button("Read EMG Data"))
         {
-            SendCommand(data);
+            var characteristic = new BLEService.Characteristic
+            {
+                Device = _connectedDevice,
+                ServiceUuid = _emgService,
+                CharacteristicUuid = _emgDataCharacteristic1
+            };
+            BLEService.Subscribe(characteristic, data => ParseEMGData(data, 0));
+
+            characteristic.CharacteristicUuid = _emgDataCharacteristic2;
+            BLEService.Subscribe(characteristic, data => ParseEMGData(data, 1));
+
+            characteristic.CharacteristicUuid = _emgDataCharacteristic3;
+            BLEService.Subscribe(characteristic, data => ParseEMGData(data, 2));
+
+            characteristic.CharacteristicUuid = _emgDataCharacteristic4;
+            BLEService.Subscribe(characteristic, data => ParseEMGData(data, 3));
         }
     }
 
-    private void SendCommand(byte[] data)
+    private float time;
+    private float lastTime;
+    private int count = -1;
+    private float sum = 0;
+
+    private void ParseEMGData(BLEService.Data data, int index)
     {
-        BLEService.Characteristic characteristic = new BLEService.Characteristic()
+        lastTime = time;
+        time = Time.realtimeSinceStartup;
+
+        float diff = time - lastTime;
+        if (count != -1)
         {
-            CharacteristicUuid = CommandCharacteristic,
-            Device = _connectedDevice,
-            ServiceUuid = CommandService
+            sum += diff;
+        }
+
+        count++;
+
+        byte[] rawData = data.RawData;
+        // Debug.Log($"Diff: {diff} : {sum / count} : {rawData.Length}");
+
+        var sampleA = new float[]
+        {
+            rawData[0],
+            rawData[1],
+            rawData[2],
+            rawData[3],
+            rawData[4],
+            rawData[5],
+            rawData[6],
+            rawData[7]
         };
 
-        BLEService.WriteToCharacteristic(characteristic,
-            data, false, s1 => { Debug.Log($"Reply: {s1}"); });
-    }
-
-    private string _service = "D5060001-A904-DEB9-4748-2C7F4A124842";
-    private string _characteristic = "D5060401-A904-DEB9-4748-2C7F4A124842";
-    private BLEService.Device _connectedDevice;
-
-    private void SubscribeToAnyCharacteristic()
-    {
-        _characteristic = GUILayout.TextField(_characteristic);
-        _service = GUILayout.TextField(_service);
-        if (GUILayout.Button("Subscribe to the given one"))
+        var sampleB = new float[]
         {
-            BLEService.Characteristic characteristic = new BLEService.Characteristic()
-            {
-                CharacteristicUuid = _characteristic,
-                Device = _connectedDevice,
-                ServiceUuid = _service
-            };
+            rawData[0],
+            rawData[1],
+            rawData[2],
+            rawData[3],
+            rawData[4],
+            rawData[5],
+            rawData[6],
+            rawData[7]
+        };
 
-            BLEService.Subscribe(characteristic, ParseIMUData);
+        _debugText = "";
+        foreach (float s in sampleA)
+        {
+            _debugText += s.ToString("000") + ", ";
         }
+
+        Debug.Log(_debugText);
+
+        PlotOnCharts(sampleB);
     }
 
     private void PrintAvailableDevicesList()
     {
-        foreach (BLEService.Device device in devices)
+        foreach (var device in devices)
         {
             if (GUILayout.Button(device.Name))
             {
@@ -184,7 +354,6 @@ public class MyoBLE : MonoBehaviour
         }
     }
 
-
     private void ParseIMUData(BLEService.Data data)
     {
         const float orientationScale = 1.0f;
@@ -193,76 +362,53 @@ public class MyoBLE : MonoBehaviour
 
         byte[] bytes = data.RawData;
 
-        if (bytes.Length == 8)
+        var sdata = new short[(int) Mathf.Ceil(bytes.Length / 2f)];
+        Buffer.BlockCopy(bytes, 0, sdata, 0, bytes.Length);
+
+        var w = (short) (orientationScale * sdata[0]);
+        var x = (short) (orientationScale * sdata[1]);
+        var y = (short) (orientationScale * sdata[2]);
+        var z = (short) (orientationScale * sdata[3]);
+
+        var accx = (short) (accelerometerScale * sdata[4]);
+        var accy = (short) (accelerometerScale * sdata[5]);
+        var accz = (short) (accelerometerScale * sdata[6]);
+
+        var gx = (short) (gyroscopeScale * sdata[7]);
+        var gy = (short) (gyroscopeScale * sdata[8]);
+        var gz = (short) (gyroscopeScale * sdata[9]);
+
+        // SetDebugText(bytes, sdata, w, x, y, z, gx, gy, gz, accx, accy, accz);
+
+        _debugText = $"{x:0000} - {z:0000} - {y:0000} - {w:0000} : {(x * x + y * y + z * z + w * w)}";
+
+        PlotOnCharts(accx, accy, accz);
+
+        HandleAcc(accx, accy, accz);
+
+        var rotation = new Quaternion(quaternionMultiplier.x * y, quaternionMultiplier.y * z,
+            quaternionMultiplier.z * x, quaternionMultiplier.w * w);
+        var finalRotation = Quaternion.Euler(correctionEuler) * rotation;
+        controller.rotation = finalRotation;
+    }
+
+    private void PlotOnCharts(params float[] data)
+    {
+        int max = Mathf.Max(data.Length, charts.Length);
+        for (var i = 0; i < max; i++)
         {
-            uint millis = (uint) ((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]);
-            ushort ecg = (ushort) ((bytes[4] << 8) | bytes[5]);
-            ushort emg = (ushort) ((bytes[6] << 8) | bytes[7]);
+            if (i >= data.Length || i >= charts.Length)
+                continue;
 
-            s = $"{millis} : {ecg} : {emg}";
-        }
-        else
-        {
-            s = $"[{bytes.Length}]: ";
-            const string format = "00000";
-            foreach (byte b in bytes)
-            {
-                s += ((int) b).ToString(format);
-                s += " ";
-            }
-
-            short[] sdata = new short[(int) Mathf.Ceil(bytes.Length / 2f)];
-            Buffer.BlockCopy(bytes, 0, sdata, 0, bytes.Length);
-
-            s += $"\n: {sdata.Length}";
-            foreach (short s1 in sdata)
-            {
-                s += s1.ToString(format) + " ";
-            }
-
-            short w = (short) (orientationScale * sdata[0]);
-            short x = (short) (orientationScale * sdata[1]);
-            short y = (short) (orientationScale * sdata[2]);
-            short z = (short) (orientationScale * sdata[3]);
-
-            short accx = (short) (accelerometerScale * sdata[4]);
-            short accy = (short) (accelerometerScale * sdata[5]);
-            short accz = (short) (accelerometerScale * sdata[6]);
-
-            short gx = (short) (gyroscopeScale * sdata[7]);
-            short gy = (short) (gyroscopeScale * sdata[8]);
-            short gz = (short) (gyroscopeScale * sdata[9]);
-
-            s += "\n";
-            s += "Orientation  : ";
-            s += w.ToString(format) + " ";
-            s += x.ToString(format) + " ";
-            s += y.ToString(format) + " ";
-            s += z.ToString(format) + " ";
-            s += "\n";
-            s += "Gyroscope    : ";
-            s += gx.ToString(format) + " ";
-            s += gy.ToString(format) + " ";
-            s += gz.ToString(format) + " ";
-            s += "\n";
-            s += "Accelerometer: ";
-            s += accx.ToString(format) + " ";
-            s += accy.ToString(format) + " ";
-            s += accz.ToString(format) + " ";
-
-            xChart.Insert(accx);
-            yChart.Insert(accy);
-            zChart.Insert(accz);
-
-            HandleAcc(accx, accy, accz);
-
-            // controller.rotation = Quaternion.SlerpUnclamped(controller.rotation, new Quaternion(x, y, z, w), Time.deltaTime * 5);
-            controller.rotation = new Quaternion(x, y, z, w);
+            charts[i].Insert(data[i]);
         }
     }
 
     private void HandleAcc(short x, short y, short z)
     {
+        if (!_hasSphereMover)
+            return;
+
         var move = SphereMover.Move.None;
         if (x > 6000) move = SphereMover.Move.Backward;
         if (x < -6000) move = SphereMover.Move.Forward;
@@ -272,5 +418,41 @@ public class MyoBLE : MonoBehaviour
         if (z < -3500) move = SphereMover.Move.Up;
 
         SphereMover.ApplyMove(move);
+    }
+
+    private void SetDebugText(byte[] bytes, short[] sdata, short w, short x, short y, short z, short gx, short gy,
+        short gz,
+        short accx, short accy, short accz)
+    {
+        _debugText = $"[{bytes.Length}]: ";
+        const string format = "00000";
+        foreach (byte b in bytes)
+        {
+            _debugText += ((int) b).ToString(format);
+            _debugText += " ";
+        }
+
+        _debugText += $"\n: {sdata.Length}";
+        foreach (short s1 in sdata)
+        {
+            _debugText += s1.ToString(format) + " ";
+        }
+
+        _debugText += "\n";
+        _debugText += "Orientation  : ";
+        _debugText += w.ToString(format) + " ";
+        _debugText += x.ToString(format) + " ";
+        _debugText += y.ToString(format) + " ";
+        _debugText += z.ToString(format) + " ";
+        _debugText += "\n";
+        _debugText += "Gyroscope    : ";
+        _debugText += gx.ToString(format) + " ";
+        _debugText += gy.ToString(format) + " ";
+        _debugText += gz.ToString(format) + " ";
+        _debugText += "\n";
+        _debugText += "Accelerometer: ";
+        _debugText += accx.ToString(format) + " ";
+        _debugText += accy.ToString(format) + " ";
+        _debugText += accz.ToString(format) + " ";
     }
 }

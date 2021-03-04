@@ -4,6 +4,7 @@ using UnityEngine;
 namespace VisualGraphs.Editor
 {
     [CustomEditor(typeof(LineChart))]
+    [CanEditMultipleObjects]
     public class LineChartEditor : UnityEditor.Editor
     {
         private float _newValue;

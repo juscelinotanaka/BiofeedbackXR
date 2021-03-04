@@ -17,7 +17,10 @@ public class BLETest : MonoBehaviour
         if (!BLEService.IsInitialized)
         {
             if (GUILayout.Button("Initialize"))
-                BLEService.Initialize(() => Debug.Log("Initialized"), error => Debug.Log($"Error: {error}"));
+                BLEService.Initialize(
+                    () => Debug.Log("Initialized"),
+                    error => Debug.Log($"Error: {error}")
+                );
         }
         else
         {
@@ -33,7 +36,6 @@ public class BLETest : MonoBehaviour
                             {
                                 devices.Add(device);
                             }
-                            Debug.Log($"Device found: {device.Name}");
                         });
                     }
                     break;
@@ -52,7 +54,11 @@ public class BLETest : MonoBehaviour
                             BLEService.Subscribe(characteristic, OnDataReceived);
                         }
                     }
-                    
+
+                    SubscribeToAnyCharacteristic();
+
+                    WriteToCharacteristic();
+
                     break;
                 case BLEService.State.Subscribing:
                     break;
@@ -60,11 +66,56 @@ public class BLETest : MonoBehaviour
                     GUILayout.Label($"Data: {s}");
                     break;
                 case BLEService.State.Disconnected:
+                    if (characteristics.Count > 0)
+                        characteristics.Clear();
                     PrintAvailableDevicesList();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+    }
+
+    private void WriteToCharacteristic()
+    {
+        GUILayout.Label("Write to Characteristic");
+        if (GUILayout.Button("WRITE"))
+        {
+            BLEService.Characteristic characteristic = new BLEService.Characteristic()
+            {
+                CharacteristicUuid = _characteristic,
+                Device = _connectedDevice,
+                ServiceUuid = _service
+            };
+
+            // byte[] data = new byte[] {0x01, 0x00, 0x01, 0x00}; // vibrate long
+            byte[] data = new byte[] {0x03, 0x03}; // start IMU
+            BLEService.WriteToCharacteristic(characteristic, 
+                data, false, s1 =>
+            {
+                Debug.Log($"Reply: {s1}");
+            });
+        }
+    }
+
+    private string _service = "D5060001-A904-DEB9-4748-2C7F4A124842";
+    private string _characteristic = "D5060401-A904-DEB9-4748-2C7F4A124842";
+    private BLEService.Device _connectedDevice;
+
+    private void SubscribeToAnyCharacteristic()
+    {
+        _characteristic = GUILayout.TextField(_characteristic);
+        _service = GUILayout.TextField(_service);
+        if (GUILayout.Button("Subscribe to the given one"))
+        {
+            BLEService.Characteristic characteristic = new BLEService.Characteristic()
+            {
+                CharacteristicUuid = _characteristic,
+                Device = _connectedDevice,
+                ServiceUuid = _service
+            };
+
+            BLEService.Subscribe(characteristic, OnDataReceived);
         }
     }
 
@@ -74,6 +125,7 @@ public class BLETest : MonoBehaviour
         {
             if (GUILayout.Button(device.Name))
             {
+                _connectedDevice = device;
                 BLEService.ConnectToDevice(device,
                     characteristic => { characteristics.Add(characteristic); },
                     disconnectedAddress => { Debug.Log($"Device Disconnected: {disconnectedAddress}"); });
@@ -96,7 +148,7 @@ public class BLETest : MonoBehaviour
         }
         else
         {
-            s = $"-{bytes.Length}-";
+            s = $"f-{bytes.Length}-";
             foreach (byte b in bytes)
             {
                 s += (int) b;

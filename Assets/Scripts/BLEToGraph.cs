@@ -20,7 +20,7 @@ public class BLEToGraph : MonoBehaviour
 
     private IEnumerator Start()
     {
-        yield return new WaitForSeconds(3);
+        yield return new WaitForSeconds(1);
 
         BLEService.Initialize(() =>
             {
@@ -33,7 +33,7 @@ public class BLEToGraph : MonoBehaviour
                             characteristic =>
                             {
                                 Debug.Log(characteristic.CharacteristicUuid);
-                                if (characteristic.CharacteristicUuid.Equals(CharacteristicUuid))
+                                if (characteristic.CharacteristicUuid.ToLower().Equals(CharacteristicUuid.ToLower()))
                                 {
                                     BLEService.Subscribe(characteristic, OnDataReceived);
                                 }
@@ -63,28 +63,25 @@ public class BLEToGraph : MonoBehaviour
         GUI.skin.button.fontSize = 40;
         GUI.skin.label.fontSize = 40;
 
-        if (!BLEService.IsInitialized)
-        {
-            if (GUILayout.Button("Initialize"))
-                BLEService.Initialize(() => Debug.Log("Initialized"), error => Debug.Log($"Error: {error}"));
-        }
-        else
         {
             GUILayout.Label($"State: {BLEService.CurrentState}");
             switch (BLEService.CurrentState)
             {
                 case BLEService.State.ReadyToScan:
-                    if (GUILayout.Button("Scan"))
-                    {
-                        BLEService.StartScan(device =>
-                        {
-                            if (!devices.Contains(device))
-                            {
-                                devices.Add(device);
-                            }
-                            Debug.Log($"Device found: {device.Name}");
-                        });
-                    }
+                    // GUI.enabled = false;
+                    // if (GUILayout.Button("Scan"))
+                    // {
+                    //     BLEService.StartScan(device =>
+                    //     {
+                    //         if (!devices.Contains(device))
+                    //         {
+                    //             devices.Add(device);
+                    //         }
+                    //         Debug.Log($"Device found: {device.Name}");
+                    //     });
+                    // }
+                    //
+                    // GUI.enabled = true;
                     break;
                 case BLEService.State.Disconnecting:
                     break;

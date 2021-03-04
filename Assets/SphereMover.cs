@@ -6,6 +6,8 @@ using UnityEngine;
 public class SphereMover : MonoBehaviour
 {
     [SerializeField] private Rigidbody _rigidbody;
+    private Vector3 _initialPosition;
+
     public enum Move
     {
         None,
@@ -17,6 +19,11 @@ public class SphereMover : MonoBehaviour
         Backward
     }
 
+    private void Start()
+    {
+        _initialPosition = transform.position;
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -26,6 +33,17 @@ public class SphereMover : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.DownArrow)) ApplyMove(Move.Down);
         if (Input.GetKeyDown(KeyCode.Home)) ApplyMove(Move.Forward);
         if (Input.GetKeyDown(KeyCode.End)) ApplyMove(Move.Backward);
+    }
+
+    private void OnGUI()
+    {
+        var width = 300;
+        if (GUI.Button(new Rect(Screen.width - width, 0, width, 50), "Reset Sphere"))
+        {
+            _rigidbody.angularVelocity = _rigidbody.velocity = Vector3.zero;
+            transform.position = _initialPosition;
+
+        }
     }
 
     public void ApplyMove(Move move)

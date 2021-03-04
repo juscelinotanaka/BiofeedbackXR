@@ -582,6 +582,7 @@ PlayerSettings:
   webGLDecompressionFallback: 0
   scriptingDefineSymbols:
     1: EXPERIMENTAL_MACOS_EDITOR
+    7: EXPERIMENTAL_MACOS_EDITOR
   platformArchitecture: {}
   scriptingBackend: {}
   il2cppCompilerConfiguration: {}
